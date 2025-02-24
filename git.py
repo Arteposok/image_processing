@@ -7,6 +7,6 @@ def save():
     os.system("git push -u origin main")
 
 keyboard.add_hotkey("ctrl+s", save)
-
+save()
 while True:
     pass
