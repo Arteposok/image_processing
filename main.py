@@ -122,4 +122,8 @@ def image_shot(name):
     cv.waitKey()
     cv.destroyAllWindows()
 
-video_loop()
+def images():
+    for x in range(1,13):
+        image_shot(f"_{x}.png")
+
+images()
