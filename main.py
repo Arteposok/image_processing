@@ -1,3 +1,5 @@
+from concurrent.futures.thread import ThreadPoolExecutor
+
 import cv2 as cv
 import mss
 import numpy as np
@@ -6,23 +8,37 @@ import tkinter as tk
 import random as rnd
 
 def filter(img):
+    use_canny=False
+    coal_filter=True
+    negate=False
     edit = img
     edit = cv.bilateralFilter(edit, d=2, sigmaColor=20, sigmaSpace=30)
-    edges_colored = cv.Canny(edit, threshold1=50, threshold2=150)
+    if use_canny:
+        edit_gray = cv.cvtColor(edit, cv.COLOR_BGR2GRAY)
+        edges_colored = cv.Canny(edit_gray, threshold1=50, threshold2=150)
+    else:
+        edit_gray=cv.cvtColor(edit, cv.COLOR_BGR2GRAY)
+        sobel_x = cv.convertScaleAbs(cv.Sobel(edit_gray, cv.CV_64F, 1, 0, ksize=3))
+        sobel_y = cv.convertScaleAbs(cv.Sobel(edit_gray, cv.CV_64F, 0, 1, ksize=3))
+        edges_colored=sobel_x+sobel_y
     edges_colored = cv.cvtColor(edges_colored, cv.COLOR_GRAY2BGR)
-    edges_colored=cv.GaussianBlur(edges_colored, (5,5), 0)
-    edges_colored=cv.bitwise_not(edges_colored)
-    edit = cv.bilateralFilter(edit, d=5, sigmaColor=50, sigmaSpace=50)
+    edges_colored=cv.GaussianBlur(edges_colored, (3,3), 0)
+    if negate:
+        edges_colored=cv.bitwise_not(edges_colored)
+    edit = cv.blur(edit, (5,5))
     edit = cv.addWeighted(edit, 0.2, edges_colored, 0.8,0)
-    return edit
+    return edges_colored if coal_filter else edit
 
-def grab(sct):
-    return np.array(sct.grab(sct.monitors[1]))[:, :, :3]
+def grab(sct,executor):
+    future=executor.submit(sct.grab,sct.monitors[1]).result()
+    return np.array(
+        future.result()
+    )[:, :, :3]
 
 def video_loop():
     open_it=True
     fast_save=False
-    stich=True
+    stich=False
     capture=True
     file_in = "horse_sample.mp4"
     file_out = "camera.mp4"
@@ -47,21 +63,21 @@ def video_loop():
         shoot_next_frame=True
     shot_button=tk.Button(win,text="snapshot", command=shoot)
     shot_button.pack()
+    executor=ThreadPoolExecutor()
     with mss.mss() as sct:
         while video.isOpened():
             win.update()
             prev_time = time.perf_counter()
             if open_it:
-                ret, frame = video.read()
+                ret, frame = executor.submit(video.read).result()
                 if not ret:
                     break
             else:
-                frame = grab(sct)
-            if open_it:
-                frame_show=cv.resize(frame, (width*2,height*2))
-            edit = filter(frame)
-            edit = cv.hconcat([frame,edit])
-            out.write(edit)
+                frame = executor.submit(grab,sct).result()
+            edit = executor.submit(filter,frame).result()
+            if stich:
+                edit = cv.hconcat([frame,edit])
+            #out.write(edit)
             if capture and shoot_next_frame:
                 x=str(rnd.randint(0,10))
                 y=str(rnd.randint(0,10))
