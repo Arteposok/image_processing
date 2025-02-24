@@ -1,3 +1,4 @@
+import math
 from concurrent.futures.thread import ThreadPoolExecutor
 
 import cv2 as cv
@@ -7,11 +8,16 @@ import time
 import tkinter as tk
 import random as rnd
 
+from sympy.codegen.fnodes import dimension
+
+
 def filter(img):
     use_canny=False
-    coal_filter=True
+    coal_filter=False
     negate=False
     edit = img
+    if not use_canny:
+        edit = cv.GaussianBlur(edit, (3,3), 0)
     edit = cv.bilateralFilter(edit, d=2, sigmaColor=20, sigmaSpace=30)
     if use_canny:
         edit_gray = cv.cvtColor(edit, cv.COLOR_BGR2GRAY)
@@ -103,12 +109,17 @@ def video_loop():
     video.release()
     out.release()
 
-def image_shot():
-    image=cv.imread("sample4.png")
+def image_shot(name):
+    image=cv.imread(name)
     image=filter(image)
-    image2=cv.resize(image, (int(len(image[0])/2), int(len(image)/2)))
-    cv.imshow("edit", image2)
+    img=(int(len(image[0])), int(len(image)))
+    length=math.sqrt(img[0]**2+img[1]**2)
+    size=1000
+    dimensions=[int(img[0]/length*size), int(img[1]/length*size)]
+    image2=cv.resize(image, dimensions)
+    cv.imshow(name, image2)
     #cv.imwrite("sample1_out.webp", image)
     cv.waitKey()
+    cv.destroyAllWindows()
 
 video_loop()
