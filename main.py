@@ -17,7 +17,7 @@ def filter(img):
     negate=False
     use_where=True
     edit = img
-    black_amount=0.8
+    black_amount=0.6
     if not use_canny:
         edit = cv.GaussianBlur(edit, (5,5), 0)
         edit = cv.medianBlur(edit, 3)
@@ -31,6 +31,8 @@ def filter(img):
         sobel_x = cv.convertScaleAbs(cv.Sobel(edit_gray, cv.CV_64F, 1, 0, ksize=3))
         sobel_y = cv.convertScaleAbs(cv.Sobel(edit_gray, cv.CV_64F, 0, 1, ksize=3))
         edges_colored=cv.addWeighted(sobel_x,0.5,sobel_y,0.5,1)
+        #edges_colored = cv.medianBlur(edges_colored, 3)
+
     edges_colored = cv.cvtColor(edges_colored, cv.COLOR_GRAY2BGR)
     if negate:
         edges_colored=cv.bitwise_not(edges_colored)
@@ -45,7 +47,7 @@ def grab(sct):
     return np.array(sct.grab(sct.monitors[1]))[:, :, :3]
 
 def video_loop():
-    open_it=False
+    open_it=True
     fast_save=False
     stich=False
     capture=True
