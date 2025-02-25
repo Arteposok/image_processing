@@ -46,10 +46,16 @@ def filter(img):
 def grab(sct):
     return np.array(sct.grab(sct.monitors[1]))[:, :, :3]
 
+def size(edit, size):
+    img = (int(len(edit[0])), int(len(edit)))
+    length = math.sqrt(img[0] ** 2 + img[1] ** 2)
+    dimensions = [int(img[0] / length * size), int(img[1] / length * size)]
+    return cv.resize(edit, dimensions)
+
 def video_loop():
     open_it=False
     fast_save=False
-    stich=False
+    stich=True
     capture=True
     file_in = "horse_sample.mp4"
     file_out = "recording.mp4"
@@ -61,8 +67,25 @@ def video_loop():
     screen=np.array(mss.mss().grab(mss.mss().monitors[1]))[:,:,:3]
     fps = video.get(cv.CAP_PROP_FPS) if open_it else 5
     frame_time = 1 / fps
+    if stich:
+        if open_it:
+            ret, frame = video.read()
+        else:
+            frame = grab(mss.mss())
+        w_h = [
+            len(frame[0]),
+            len(frame)
+        ]
+        img_size = w_h[0] / w_h[1]
+        ret, pic = video.read()
+        edit = grab(mss.mss())
+        show_w = int(edit.shape[0] * img_size)
+        show_h = int(edit.shape[0])
+        pic = cv.resize(pic, (show_w, show_h))
+        edit = cv.hconcat([pic, edit])
     width = int(video.get(cv.CAP_PROP_FRAME_WIDTH)) if open_it else len(screen[0])
-    width *= 2 if stich else 1
+    if stich:
+        width = edit.shape[1]
     height = int(video.get(cv.CAP_PROP_FRAME_HEIGHT)) if open_it else len(screen)
     out = cv.VideoWriter(file_out, codec, fps, (width, height))
     frame_n=0
@@ -85,10 +108,17 @@ def video_loop():
                     break
             else:
                 frame = grab(sct)
+
             edit = executor.submit(filter,frame).result()
             if stich:
-                edit = cv.hconcat([frame,edit])
-            edit=cv.resize(edit, (width,height))
+                ret, pic = video.read()
+                show_w=int(edit.shape[0]*img_size)
+                show_h=int(edit.shape[0])
+                pic = cv.resize(pic, (show_w, show_h))
+                edit = cv.hconcat([pic, edit])
+                edit = cv.resize(edit, (width, height))
+                if not fast_save:
+                    cv.imshow("edit", size(edit, 2000))
             out.write(edit)
             if capture and shoot_next_frame:
                 x=str(rnd.randint(0,10))
@@ -96,25 +126,14 @@ def video_loop():
                 z=str(rnd.randint(0,10))
                 cv.imwrite(x+y+z+".png", edit)
                 shoot_next_frame=False
-            if not fast_save:
-                img = (int(len(edit[0])), int(len(edit)))
-                length = math.sqrt(img[0] ** 2 + img[1] ** 2)
-                size = 2000
-                dimensions = [int(img[0] / length * size), int(img[1] / length * size)]
-                show = cv.resize(edit, dimensions)
-                cv.imshow("edit", show)
             if fast_save:
                 continue
             delay = time.perf_counter() - prev_time
             frame_n += 1
             wait = max(0, frame_time - delay)
             time.sleep(wait)
-            print('delay ' + str(delay))
-            print('wait time ' + str(wait))
-            print("processed! frame N_*" + str(frame_n))
             if cv.waitKey(1) & 0xFF == ord("q") and not fast_save:
-                break
-
+                return False
 
     video.release()
     out.release()
