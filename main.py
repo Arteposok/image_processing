@@ -19,7 +19,7 @@ def filter(img):
     edit = img
     black_amount=0.8
     if not use_canny:
-        edit = cv.GaussianBlur(edit, (3,3), 0)
+        edit = cv.GaussianBlur(edit, (5,5), 0)
         edit = cv.medianBlur(edit, 3)
     edit = cv.GaussianBlur(edit, (3,3), 0)
     edit = cv.bilateralFilter(edit, d=2, sigmaColor=20, sigmaSpace=30)
@@ -50,7 +50,7 @@ def video_loop():
     stich=False
     capture=True
     file_in = "horse_sample.mp4"
-    file_out = "camera.mp4"
+    file_out = "recording.mp4"
     video = cv.VideoCapture(0)#file_in if open_it else 0)
     if not video.isOpened():
         print("Error: Couldn't open video.")
@@ -134,4 +134,4 @@ def images():
     for x in range(1,13):
         image_shot(f"_{x}.png")
 
-video_loop()
+images()
