@@ -47,7 +47,7 @@ def grab(sct):
     return np.array(sct.grab(sct.monitors[1]))[:, :, :3]
 
 def video_loop():
-    open_it=True
+    open_it=False
     fast_save=False
     stich=False
     capture=True
@@ -136,4 +136,4 @@ def images():
     for x in range(1,13):
         image_shot(f"_{x}.png")
 
-images()
+video_loop()
