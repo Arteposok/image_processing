@@ -22,7 +22,6 @@ def filter(img):
         edit = cv.GaussianBlur(edit, (5,5), 0)
         edit = cv.medianBlur(edit, 3)
     edit = cv.GaussianBlur(edit, (3,3), 0)
-    edit = cv.bilateralFilter(edit, d=2, sigmaColor=20, sigmaSpace=30)
     if use_canny:
         edit_gray = cv.cvtColor(edit, cv.COLOR_BGR2GRAY)
         edges_colored = cv.Canny(edit_gray, threshold1=50, threshold2=150)
@@ -55,7 +54,7 @@ def size(edit, size):
 def video_loop():
     open_it=False
     fast_save=False
-    stich=True
+    stich=False
     capture=True
     file_in = "horse_sample.mp4"
     file_out = "recording.mp4"
@@ -67,32 +66,21 @@ def video_loop():
     screen=np.array(mss.mss().grab(mss.mss().monitors[1]))[:,:,:3]
     fps = video.get(cv.CAP_PROP_FPS) if open_it else 5
     frame_time = 1 / fps
-    if stich:
-        if open_it:
-            ret, frame = video.read()
-        else:
-            frame = grab(mss.mss())
-        w_h = [
-            len(frame[0]),
-            len(frame)
-        ]
-        img_size = w_h[0] / w_h[1]
-        ret, pic = video.read()
-        edit = grab(mss.mss())
-        show_w = int(edit.shape[0] * img_size)
-        show_h = int(edit.shape[0])
-        pic = cv.resize(pic, (show_w, show_h))
-        edit = cv.hconcat([pic, edit])
     width = int(video.get(cv.CAP_PROP_FRAME_WIDTH)) if open_it else len(screen[0])
-    if stich:
-        width = edit.shape[1]
     height = int(video.get(cv.CAP_PROP_FRAME_HEIGHT)) if open_it else len(screen)
+    if stich:
+        print(width)
+        width *= 2
+        print(width)
+    else:
+        width *= 1
     out = cv.VideoWriter(file_out, codec, fps, (width, height))
     frame_n=0
     shoot_next_frame=False
     win=tk.Tk()
     win.resizable=False
     def shoot(*x):
+        nonlocal shoot_next_frame
         nonlocal shoot_next_frame
         shoot_next_frame=True
     shot_button=tk.Button(win,text="snapshot", command=shoot)
@@ -111,14 +99,9 @@ def video_loop():
 
             edit = executor.submit(filter,frame).result()
             if stich:
-                ret, pic = video.read()
-                show_w=int(edit.shape[0]*img_size)
-                show_h=int(edit.shape[0])
-                pic = cv.resize(pic, (show_w, show_h))
-                edit = cv.hconcat([pic, edit])
-                edit = cv.resize(edit, (width, height))
-                if not fast_save:
-                    cv.imshow("edit", size(edit, 2000))
+                edit = cv.hconcat([frame, edit])
+            if not fast_save:
+                cv.imshow("edit", size(edit, 2000))
             out.write(edit)
             if capture and shoot_next_frame:
                 x=str(rnd.randint(0,10))
@@ -133,7 +116,7 @@ def video_loop():
             wait = max(0, frame_time - delay)
             time.sleep(wait)
             if cv.waitKey(1) & 0xFF == ord("q") and not fast_save:
-                return False
+                break
 
     video.release()
     out.release()
